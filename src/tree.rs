@@ -20,19 +20,17 @@ impl<T> Tree<T> {
   pub fn add_branch_labeled(&mut self, label: String) -> &mut Self {
     self.data.push(TreeElement::Branch(Self::with_label(label)));
     let i = self.data.len();
-    match &mut self.data[i-1] {
-      TreeElement::Branch(n) => n,
-      TreeElement::Leaf(_) => {panic!("Something is very amiss")}
-    }
+    if let TreeElement::Branch(n) = &mut self.data[i-1] {
+      n
+    } else {panic!("That's not right...")}
   }
 
   pub fn add_branch(&mut self) -> &mut Self {
     self.data.push(TreeElement::Branch(Self::new()));
     let i = self.data.len();
-    match &mut self.data[i-1] {
-      TreeElement::Branch(n) => n,
-      TreeElement::Leaf(_) => {panic!("Something is very amiss")}
-    }
+    if let TreeElement::Branch(n) = &mut self.data[i-1] {
+      n
+    } else {panic!("That's not right...")}
   }
 
   pub fn add_value(&mut self, value: T) {

@@ -1,62 +1,70 @@
 use super::tree::Tree;
+use super::error::Error;
 
-pub fn parse(data: &String) -> Result<Tree<String>,String> {
+pub fn parse(data: &String) -> Result<Tree<String>,Error> {
   let mut out: Tree<String> = Tree::new();
 
   let mut copy = data.clone();
   copy.push(')');
 
-  parse_rec(&copy, 0, &mut out)?;
-
-  Ok(out)
+  let end = parse_rec(&copy, 0, &mut out, false)?;
+  if end < data.len() {
+    Err(Error::Exception(end,String::from("What is this for?")))
+  } else {
+    Ok(out)
+  }
 }
 
-fn parse_rec(data: &String, start: usize, out: &mut Tree<String>) -> Result<usize,String> {
+fn parse_rec(data: &String, start: usize, out: &mut Tree<String>, bracket: bool) -> Result<usize,Error> {
   let mut i: usize = start;
-  let mut tmp = String::new();
-  let mut tmp2 = false;
-  let mut tmp3 = false;
-  let mut tmp4 = false;
+  let mut word = String::new();
+  let mut in_word = false;
+  let mut in_str = false;
+  let mut esc = false;
   loop {
     match data.chars().nth(i) {
-      None => {return Err(String::from("Reached end of buffer"))},
+      None => {return Err(Error::EndOfBuffer)},
       Some(n) => {
-        if tmp4 {
-          tmp.push(n);
-          tmp4 = false;
-        } else if tmp3 {
+        if esc {
+          in_word = true;
+          word.push(n);
+          esc = false;
+        } else if in_str {
           if n == '"' {
-            tmp3 = false;
+            in_str = false;
           }
-          tmp.push(n);
+          word.push(n);
         } else {
           match n {
             '(' | '[' => {
-              if tmp == "" {
-                i = parse_rec(data, i+1, out.add_branch())?;
-                tmp2 = true;
+              if word == "" {
+                i = parse_rec(data, i+1, out.add_branch(), n=='[')?;
+                in_word = false;
               } else {
-                i = parse_rec(data, i+1, out.add_branch_labeled(tmp))?;
-                tmp2 = true;
-                tmp = String::new();
+                i = parse_rec(data, i+1, out.add_branch_labeled(word),n=='[')?;
+                in_word = false;
+                word = String::new();
               }
             },
             ')' | ']' => {
-              if !tmp2 {
-                out.add_value(tmp);
+              if !((n==')') ^ bracket) {
+                return Err(Error::MismatchedParens(start-1,i));
+              }
+              if in_word {
+                out.add_value(word);
               }
               return Ok(i)
             },
             ' ' | '\n' => {
-              if !tmp2 {
-                tmp2 = true;
-                out.add_value(tmp);
-                tmp = String::new();
+              if in_word {
+                in_word = false;
+                out.add_value(word);
+                word = String::new();
               }
             },
-            '"' => {tmp.push(n); tmp2 = false; tmp3 = true;},
-            '\\' => {tmp4 = true;},
-            _ => {tmp.push(n); tmp2 = false;},
+            '"' => {word.push(n); in_word = true; in_str = true;},
+            '\\' => {esc = true;},
+            _ => {word.push(n); in_word = true;},
           }
         }
       }
