@@ -6,6 +6,8 @@ pub enum Error {
   Exception(usize,String),
   Unknown,
   FileNotFound(String),
+  IntParseError(usize),
+  CharParseError(usize),
 }
 
 pub fn display_error(file: &String, error: Error) {
@@ -13,7 +15,8 @@ pub fn display_error(file: &String, error: Error) {
     Error::MismatchedParens(start,end) => {error_message(Some(file),start,Some(end),String::from("note: begins here"),Some(String::from("Mismatched parenthesis")), true)},
     Error::EndOfBuffer => {error_message(Some(file),file.len(),None,String::from("Reached end of buffer"),None,false)},
     Error::Exception(start,msg) => {error_message(Some(file),start,None,msg,None,false)},
-    Error::FileNotFound(file) => {eprintln!("File not found: {}",file)}
+    Error::FileNotFound(file) => {eprintln!("File not found: {}",file)},
+    Error::CharParseError(start) => {error_message(Some(file), start, None, String::from("Error while parsing character"), None, false)}
     _ => {error_message(None,0,None,String::from("Unknown error"),None,false)}
   }
 }
@@ -93,6 +96,6 @@ pub fn error_message(file: Option<&String>, start: usize, end: Option<usize>, ms
         second();
       }
     },
-    None => {eprint!("{}",msg1)},
+    None => {eprintln!("{}",msg1)},
   }
 }

@@ -15,6 +15,13 @@ pub fn parse(data: &String) -> Result<Tree<String>,Error> {
   }
 }
 
+fn get_char(data: &String, start: usize) -> Result<char,Error> {
+  match u8::from_str_radix(&data[start..start+2],16) {
+    Err(_) => {Err(Error::CharParseError(start))},
+    Ok(n) => {Ok(n as char)}
+  }
+}
+
 fn parse_rec(data: &String, start: usize, out: &mut Tree<String>, bracket: bool) -> Result<usize,Error> {
   let mut i: usize = start;
   let mut word = String::new();
@@ -25,15 +32,25 @@ fn parse_rec(data: &String, start: usize, out: &mut Tree<String>, bracket: bool)
     match data.chars().nth(i) {
       None => {return Err(Error::EndOfBuffer)},
       Some(n) => {
-        if esc {
-          in_word = true;
-          word.push(n);
-          esc = false;
-        } else if in_str {
-          if n == '"' {
+        if in_str {
+          if esc {
+            word.push(match n {
+              '0' => '\0',
+              'n' => '\n',
+              'r' => '\r',
+              't' => '\t',
+              'x' => {i += 2; get_char(data, i-1)?}
+              _ => n,
+            });
+            esc = false;
+          } else if n == '\\' {
+            esc = true;
+          } else if n == '"' {
             in_str = false;
+            word.push(n);
+          } else {
+            word.push(n);
           }
-          word.push(n);
         } else {
           match n {
             '(' | '[' => {
@@ -55,16 +72,19 @@ fn parse_rec(data: &String, start: usize, out: &mut Tree<String>, bracket: bool)
               }
               return Ok(i)
             },
-            ' ' | '\n' => {
+            ' ' | '\n' | '\r' | '\t' => {
               if in_word {
+                if word.contains('\n') {println!("eXCUSE ME!?")}
                 in_word = false;
                 out.add_value(word);
                 word = String::new();
               }
             },
             '"' => {word.push(n); in_word = true; in_str = true;},
-            '\\' => {esc = true;},
-            _ => {word.push(n); in_word = true;},
+            _ => {
+              word.push(n);
+              in_word = true;
+            },
           }
         }
       }
